@@ -1,8 +1,14 @@
+import argparse
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
-img_name = 'a4.jpg'
+parser = argparse.ArgumentParser(description='A simple text line Classifier.')
+parser.add_argument('image', metavar='FILE', type=str,
+                   help='image file name to proccess')
+args = parser.parse_args()
+
+img_name = args.image
 img = cv2.imread('pictures/' + img_name)
 img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 img = cv2.medianBlur(img,5)
