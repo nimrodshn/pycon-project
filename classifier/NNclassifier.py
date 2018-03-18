@@ -104,4 +104,4 @@ epochs = 13
 model1.compile(optimizer='rmsprop', loss='sparse_categorical_crossentropy',
                metrics=['accuracy'])
 model1.fit(training_data, training_label,
-           atch_size=batch_size, epochs=epochs, verbose=2)
+           batch_size=batch_size, epochs=epochs, verbose=2)
