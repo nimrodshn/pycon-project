@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from matplotlib import pyplot as plt
 from keras.models import Sequential
 from keras.layers import Dense, Conv2D, MaxPooling2D, Dropout, Flatten
 import argparse
@@ -13,6 +14,8 @@ random.seed()
 parser = argparse.ArgumentParser(description='A learning line Classifier.')
 parser.add_argument('image', metavar='FILE', type=str,
                     help='image file name to proccess')
+parser.add_argument('testimage', metavar='FILE', type=str,
+                    help='test image file name to proccess')
 parser.add_argument('sampels', metavar='N', type=int, nargs='?', default=360,
                     help='number of training points')
 args = parser.parse_args()
@@ -20,54 +23,52 @@ args = parser.parse_args()
 # get number of sumples from user
 num_of_samples_per_category = args.sampels / 2
 
-# get imagename from user
-img_name = args.image
-input_image = cv2.imread('pictures/' + img_name)
-output_image = cv2.imread('pictures/out/' + img_name)
 
-width, length, _ = input_image.shape
-training_data = []
-training_label = []
+def get_data(img1, img2, samples):
+    width, length, _ = img1.shape
+    training_data = []
+    training_label = []
 
-print("Create some training data.")
-training_length = 0
-while training_length < num_of_samples_per_category:
-    # randomly chose point
-    x, y = random.randint(0, width - 33), random.randint(0, length - 33)
+    training_length = 0
+    while training_length < samples:
+        # randomly chose point
+        x, y = random.randint(0, width - 33), random.randint(0, length - 33)
 
-    if output_image[x+16, y+16][0] == 0:
-        continue
+        if img2[x+16, y+16][0] == 0:
+            continue
 
-    # append label
-    training_label.append(0.01)
+        # append label
+        training_label.append(0.01)
 
-    # append training data
-    input_matrix = input_image[x:(x+32), y:(y+32)]
-    training_data.append(input_matrix)
+        # append training data
+        input_matrix = img1[x:(x+32), y:(y+32)]
+        training_data.append(input_matrix)
 
-    training_length = training_length + 1
+        training_length = training_length + 1
 
-training_length = 0
-while training_length < num_of_samples_per_category:
-    # randomly chose point
-    x, y = random.randint(0, width - 33), random.randint(0, length - 33)
+    training_length = 0
+    while training_length < samples:
+        # randomly chose point
+        x, y = random.randint(0, width - 33), random.randint(0, length - 33)
 
-    if output_image[x+16, y+16][0] != 0:
-        continue
+        if img1[x+16, y+16][0] != 0:
+            continue
 
-    # append label
-    training_label.append(0.99)
+        # append label
+        training_label.append(0.99)
 
-    # append training data
-    input_matrix = input_image[x:(x+32), y:(y+32)]
-    training_data.append(input_matrix)
+        # append training data
+        input_matrix = img1[x:(x+32), y:(y+32)]
+        training_data.append(input_matrix)
 
-    training_length = training_length + 1
+        training_length = training_length + 1
 
-training_data = np.array(training_data, dtype=np.uint8)
-training_label = np.array(training_label, dtype=np.uint8)
-print(training_data.shape)
-print(training_label.shape)
+    training_data = np.array(training_data, dtype=np.uint8)
+    training_label = np.array(training_label, dtype=np.uint8)
+    print(training_data.shape)
+    print(training_label.shape)
+
+    return training_data, training_label
 
 
 def createModel():
@@ -96,12 +97,30 @@ def createModel():
     return model
 
 
-print("Start training on data.")
+print("Create some training data.")
+input_image = cv2.imread('pictures/' + args.image)
+output_image = cv2.imread('pictures/out/' + args.image)
+training_data, training_label = get_data(input_image,
+                                         output_image,
+                                         num_of_samples_per_category)
 
+print("Start training on data.")
 model1 = createModel()
+
 batch_size = 256
 epochs = 13
 model1.compile(optimizer='rmsprop', loss='sparse_categorical_crossentropy',
                metrics=['accuracy'])
 model1.fit(training_data, training_label,
            batch_size=batch_size, epochs=epochs, verbose=2)
+
+print("Test model.")
+input_image = cv2.imread('pictures/' + args.testimage)
+output_image = cv2.imread('pictures/out/' + args.testimage)
+training_data, training_label = get_data(input_image,
+                                         output_image,
+                                         num_of_samples_per_category)
+
+fit = model1.evaluate(training_data, training_label, batch_size=batch_size,
+                      verbose=2)
+print(fit)
