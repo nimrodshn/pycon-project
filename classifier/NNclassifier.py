@@ -9,8 +9,11 @@ import cv2
 import numpy as np
 import random
 
+batch_size = 256
+epochs = 13
 random.seed()
 
+# parse user data
 parser = argparse.ArgumentParser(description='A learning line Classifier.')
 parser.add_argument('image', metavar='FILE', type=str,
                     help='image file name to proccess')
@@ -65,8 +68,6 @@ def get_data(img1, img2, samples):
 
     training_data = np.array(training_data, dtype=np.uint8)
     training_label = np.array(training_label, dtype=np.uint8)
-    print(training_data.shape)
-    print(training_label.shape)
 
     return training_data, training_label
 
@@ -97,30 +98,36 @@ def createModel():
     return model
 
 
-print("Create some training data.")
+print("Create some training data with labels.")
+
 input_image = cv2.imread('pictures/' + args.image)
 output_image = cv2.imread('pictures/out/' + args.image)
 training_data, training_label = get_data(input_image,
                                          output_image,
                                          num_of_samples_per_category)
 
-print("Start training on data.")
-model1 = createModel()
+print("   data shape:")
+print(training_data.shape)
+print(training_label.shape)
 
-batch_size = 256
-epochs = 13
+print("Start training on data.")
+
+model1 = createModel()
 model1.compile(optimizer='rmsprop', loss='sparse_categorical_crossentropy',
                metrics=['accuracy'])
 model1.fit(training_data, training_label,
            batch_size=batch_size, epochs=epochs, verbose=2)
 
-print("Test model.")
+print("Evaluate model.")
+
 input_image = cv2.imread('pictures/' + args.testimage)
 output_image = cv2.imread('pictures/out/' + args.testimage)
 training_data, training_label = get_data(input_image,
                                          output_image,
                                          num_of_samples_per_category)
 
-fit = model1.evaluate(training_data, training_label, batch_size=batch_size,
-                      verbose=2)
-print(fit)
+evaluate = model1.evaluate(training_data, training_label,
+                           batch_size=batch_size, verbose=2)
+
+print("   evaluate:")
+print(evaluate)
