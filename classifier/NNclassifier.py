@@ -2,15 +2,16 @@
 # -*- coding: utf-8 -*-
 
 from matplotlib import pyplot as plt
+from keras.utils import plot_model
 from keras.models import Sequential
-from keras.layers import Dense, Conv2D, MaxPooling2D, Dropout, Flatten
+from keras.layers import Dense, Conv2D, MaxPooling2D, Dropout, Flatten, Convolution2D
 import argparse
 import cv2
 import numpy as np
 import random
 
 batch_size = 256
-epochs = 13
+epochs = 100
 resize_factor = 0.25
 random.seed()
 
@@ -44,77 +45,70 @@ def get_data(img1, img2, samples):
     width, length, _ = img1.shape
     training_data = []
     training_label = []
+    labeling_data = []
 
     training_length = 0
     while training_length < samples:
         # randomly chose point
         x, y = random.randint(0, width - 33), random.randint(0, length - 33)
 
-        if img2[x+16, y+16][0] == 0:
-            continue
+        if img2[x+16, y+16][0] >= 128:
+            # append label
+            training_label.append([1,0])
 
-        # append label
-        training_label.append(0.00)
+            # append training data
+            input_matrix = img1[x:(x+32), y:(y+32)]
+            training_data.append(input_matrix)
 
-        # append training data
-        input_matrix = img1[x:(x+32), y:(y+32)]
-        training_data.append(input_matrix)
+            input_matrix = img2[x:(x+32), y:(y+32)]
+            labeling_data.append(input_matrix)
 
-        training_length = training_length + 1
+            training_length = training_length + 1
 
     training_length = 0
     while training_length < samples:
         # randomly chose point
         x, y = random.randint(0, width - 33), random.randint(0, length - 33)
 
-        if img1[x+16, y+16][0] != 0:
-            continue
+        if img2[x+16, y+16][0] < 128:
+            # append label
+            training_label.append([0,1])
 
-        # append label
-        training_label.append(0.99)
+            # append training data
+            input_matrix = img1[x:(x+32), y:(y+32)]
+            training_data.append(input_matrix)
 
-        # append training data
-        input_matrix = img1[x:(x+32), y:(y+32)]
-        training_data.append(input_matrix)
+            input_matrix = img2[x:(x+32), y:(y+32)]
+            labeling_data.append(input_matrix)
 
-        training_length = training_length + 1
+            training_length = training_length + 1
 
     training_data = np.array(training_data, dtype=np.uint8)
     training_label = np.array(training_label, dtype=np.uint8)
+    labeling_data = np.array(labeling_data, dtype=np.uint8)
 
-    return training_data, training_label
+    return training_data, training_label, labeling_data
 
 
 def createModel():
+    input_shape = training_data[0].shape
+    num_classes = 2
     model = Sequential()
-    model.add(Conv2D(32, (3, 3), padding='same', activation='relu',
-                     input_shape=training_data[0].shape))
-    model.add(Conv2D(32, (3, 3), activation='relu'))
+    model.add(Convolution2D(32, 3, 3, input_shape=input_shape, border_mode='same', activation='relu'))
+    model.add(Dropout(0.2))
+    model.add(Convolution2D(32, 3, 3, activation='relu', border_mode='same'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(0.25))
-
-    model.add(Conv2D(64, (3, 3), padding='same', activation='relu'))
-    model.add(Conv2D(64, (3, 3), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(0.25))
-
-    model.add(Conv2D(64, (3, 3), padding='same', activation='relu'))
-    model.add(Conv2D(64, (3, 3), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(0.25))
-
     model.add(Flatten())
     model.add(Dense(512, activation='relu'))
     model.add(Dropout(0.5))
-    model.add(Dense(1, activation='softmax'))
-
+    model.add(Dense(num_classes, activation='softmax'))
     return model
 
 
 print("\nCreate some training data with labels.")
 print("--------------------------------------")
 
-training_data, training_label = get_data(input_image,
+training_data, training_label, _ = get_data(input_image,
                                          output_image,
                                          num_of_samples_per_category)
 
@@ -126,15 +120,18 @@ print("\nStart training on data.")
 print("--------------------------------------")
 
 model1 = createModel()
-model1.compile(optimizer='rmsprop', loss='sparse_categorical_crossentropy',
-               metrics=['accuracy'])
+print(model1.summary())
+
+model1.compile(loss='categorical_crossentropy', optimizer='sgd')
+# model1.compile(optimizer='sgd', loss='binary_crossentropy',
+#                metrics=['accuracy'])
 model1.fit(training_data, training_label,
            batch_size=batch_size, epochs=epochs, verbose=2)
 
 print("\nEvaluate model.")
 print("--------------------------------------")
 
-test_data, test_label = get_data(input_testimage,
+test_data, test_label, _ = get_data(input_testimage,
                                  output_testimage,
                                  num_of_samples_per_category)
 
